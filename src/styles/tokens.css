@@ -1,0 +1,52 @@
+:root {
+  --background: #12141a;
+  --foreground: #ece8e1;
+  --muted: #1a1d26;
+  --muted-foreground: #8b909d;
+  --primary: #f0ebe3;
+  --primary-foreground: #12141a;
+  --accent: #c9a227;
+  --accent-foreground: #12141a;
+  --success: #3d9a5c;
+  --success-foreground: #ecf7ef;
+  --danger: #c94a4a;
+  --danger-foreground: #fceeee;
+  --warning: #c9923a;
+  --warning-foreground: #1a1408;
+  --info: #4a9ec9;
+  --info-foreground: #eaf6fc;
+
+  --sidebar: #0f1117;
+  --sidebar-border: #252933;
+  --sidebar-foreground: #a8adb8;
+  --sidebar-active: #1c2030;
+
+  --list-hover: #222633;
+  --list-active: #262b3a;
+
+  --border: #2a2f3d;
+  --border-primary: rgba(240, 235, 227, 0.22);
+  --border-success: rgba(61, 154, 92, 0.55);
+  --border-warning: rgba(201, 146, 58, 0.55);
+  --border-danger: rgba(201, 74, 74, 0.55);
+
+  --radius: 8px;
+  --radius-lg: 12px;
+
+  --sidebar-width: 200px;
+  --titlebar-height: 57px;
+  --font-display: "Syne", "Segoe UI", sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", monospace;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  --shadow-sheet: 8px 0 32px rgba(0, 0, 0, 0.45);
+  --shadow-dialog: 0 16px 48px rgba(0, 0, 0, 0.55);
+  --transition-page: 220ms ease-out;
+}

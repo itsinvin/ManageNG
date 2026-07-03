@@ -1,213 +1,112 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
-import {
-  detectPaths,
-  getAppVersion,
-  getDashboard,
-  getMods,
-  getStorageBreakdown,
-  listProfiles,
-  setUserFolder,
-  toggleAllMods,
-  toggleMod,
-} from "./api";
-import { Dashboard } from "./components/Dashboard";
-import { ModList } from "./components/ModList";
-import { Profiles } from "./components/Profiles";
-import { Repository } from "./components/Repository";
-import { Tools } from "./components/Tools";
-import type {
-  DashboardStats,
-  ModFilter,
-  ModInfo,
-  ProfileStore,
-  TabId,
-} from "./types";
+import { AppProvider, useApp } from "./store/AppProvider";
+import { NavigationProvider, useNavigation } from "./navigation/NavigationProvider";
+import { Sidebar, TitleBar, ToastStack } from "./components/shell/AppShell";
+import { SettingsSheet } from "./components/SettingsSheet";
+import { Button, ErrorAlert } from "./components/ui/primitives";
+import { HomePage } from "./pages/HomePage";
+import { ProfilesPage } from "./pages/ProfilesPage";
+import { ProfileDetailPage, ProfileDetailTitleActions } from "./pages/ProfileDetailPage";
+import { BrowsePage } from "./pages/BrowsePage";
+import { ToolsPage } from "./pages/ToolsPage";
+import "./styles/tokens.css";
 import "./styles/global.css";
 
-const NAV_ITEMS: { id: TabId; label: string; icon: string }[] = [
-  { id: "dashboard", label: "Dashboard", icon: "📊" },
-  { id: "mods", label: "Mods", icon: "📦" },
-  { id: "repository", label: "Repository", icon: "🏪" },
-  { id: "profiles", label: "Profiles", icon: "🎯" },
-  { id: "tools", label: "Tools", icon: "🔧" },
-];
-
-const TAB_TITLES: Record<TabId, string> = {
-  dashboard: "Dashboard",
-  mods: "Mod Manager",
-  repository: "Repository Browser",
-  profiles: "Profiles",
-  tools: "Performance Tools",
-};
-
-function App() {
-  const [tab, setTab] = useState<TabId>("dashboard");
-  const [mods, setMods] = useState<ModInfo[]>([]);
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [storage, setStorage] = useState<Record<string, number> | null>(null);
-  const [profiles, setProfiles] = useState<ProfileStore | null>(null);
-  const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<ModFilter>("all");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [version, setVersion] = useState("0.1.0");
-  const [pathConfigured, setPathConfigured] = useState(true);
-
-  const refreshData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      await detectPaths();
-      setPathConfigured(true);
-      const [modsData, dashData, storageData, profileData] = await Promise.all([
-        getMods(),
-        getDashboard(),
-        getStorageBreakdown().catch(() => null),
-        listProfiles(),
-      ]);
-      setMods(modsData);
-      setStats(dashData);
-      setStorage(storageData);
-      setProfiles(profileData);
-    } catch (e) {
-      setPathConfigured(false);
-      setError(String(e));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+function AppContent() {
+  const { state, pageVisible, setProfileNameResolver } = useNavigation();
+  const {
+    getProfile,
+    refresh,
+    refreshing,
+    error,
+    pathConfigured,
+    detectBeamNGPath,
+    setBeamNGPath,
+  } = useApp();
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
-    getAppVersion().then(setVersion).catch(() => {});
-    refreshData();
-  }, [refreshData]);
+    setProfileNameResolver((id) => getProfile(id)?.name);
+  }, [getProfile, setProfileNameResolver]);
 
-  async function handleToggle(modId: string, active: boolean) {
-    try {
-      await toggleMod(modId, active);
-      await refreshData();
-    } catch (e) {
-      setError(String(e));
-    }
-  }
-
-  async function handleToggleAll(active: boolean) {
-    try {
-      await toggleAllMods(active);
-      await refreshData();
-    } catch (e) {
-      setError(String(e));
-    }
-  }
-
-  async function handleSetPath() {
-    const selected = await open({ directory: true, multiple: false });
-    if (selected) {
-      try {
-        await setUserFolder(selected as string);
-        await refreshData();
-      } catch (e) {
-        setError(String(e));
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "," && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        setSettingsOpen(true);
       }
-    }
-  }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
-  async function handleDetectPath() {
-    try {
-      await detectPaths();
-      await refreshData();
-    } catch (e) {
-      setError(String(e));
-    }
-  }
+  const titleActions = (
+    <>
+      {!pathConfigured && (
+        <>
+          <Button variant="info" size="sm" onClick={() => detectBeamNGPath()}>
+            Auto-detect
+          </Button>
+          <Button
+            variant="success"
+            size="sm"
+            onClick={async () => {
+              const picked = await open({ directory: true });
+              if (picked) await setBeamNGPath(picked as string);
+            }}
+          >
+            Set folder
+          </Button>
+        </>
+      )}
+      {state.route === "home" && (
+        <Button variant="ghost" size="sm" className={refreshing ? "spin-once" : ""} onClick={() => refresh()}>
+          ↻ Refresh
+        </Button>
+      )}
+      {state.route === "profile-detail" && state.params.id && (
+        <ProfileDetailTitleActions profileId={state.params.id} />
+      )}
+      {state.route === "browse" && (
+        <Button variant="info" size="sm" onClick={() => refresh()}>
+          Refresh
+        </Button>
+      )}
+    </>
+  );
 
   return (
-    <div className="app-layout">
-      <aside className="sidebar">
-        <div className="sidebar-logo">
-          <img src="/icon.png" alt="ManageNG" className="sidebar-app-icon" />
-          <div>
-            <h1>
-              Manage<span>NG</span>
-            </h1>
-            <p>BeamNG.drive Mod Manager</p>
-          </div>
-        </div>
-        <nav className="sidebar-nav">
-          {NAV_ITEMS.map((item) => (
-            <button
-              key={item.id}
-              className={`nav-item ${tab === item.id ? "active" : ""}`}
-              onClick={() => setTab(item.id)}
-            >
-              <span className="icon">{item.icon}</span>
-              {item.label}
-            </button>
-          ))}
-        </nav>
-        <div className="sidebar-footer">v{version}</div>
-      </aside>
-
-      <main className="main-content">
-        <header className="page-header">
-          <h2>{TAB_TITLES[tab]}</h2>
-          <div style={{ display: "flex", gap: 8 }}>
-            {!pathConfigured && (
-              <>
-                <button className="btn btn-secondary btn-sm" onClick={handleDetectPath}>
-                  Auto-Detect
-                </button>
-                <button className="btn btn-primary btn-sm" onClick={handleSetPath}>
-                  Set User Folder
-                </button>
-              </>
-            )}
-            <button className="btn btn-secondary btn-sm" onClick={refreshData}>
-              ↻ Refresh
-            </button>
-          </div>
-        </header>
-
-        <div className="page-body">
+    <div className="app-shell">
+      <Sidebar onOpenSettings={() => setSettingsOpen(true)} />
+      <div className="main-column">
+        <TitleBar actions={titleActions} />
+        <div className={`page-body ${pageVisible ? "" : "fading"}`}>
           {error && !pathConfigured && (
-            <div className="error-banner">
-              ⚠️ {error}
-              <span style={{ marginLeft: 8, fontSize: 12 }}>
-                Launch BeamNG.drive once to create your mods folder, or set a custom path.
-              </span>
-            </div>
-          )}
-
-          {tab === "dashboard" && (
-            <Dashboard stats={stats} mods={mods} storage={storage} loading={loading} />
-          )}
-          {tab === "mods" && (
-            <ModList
-              mods={mods}
-              search={search}
-              filter={filter}
-              onSearchChange={setSearch}
-              onFilterChange={setFilter}
-              onToggle={handleToggle}
-              onToggleAll={handleToggleAll}
-              loading={loading}
+            <ErrorAlert
+              title="BeamNG folder not found"
+              message="Launch BeamNG.drive once or set a custom user folder path."
             />
           )}
-          {tab === "repository" && <Repository onModInstalled={refreshData} />}
-          {tab === "profiles" && (
-            <Profiles
-              store={profiles}
-              onRefresh={async () => setProfiles(await listProfiles())}
-              onProfileApplied={refreshData}
-              loading={loading}
-            />
-          )}
-          {tab === "tools" && <Tools onRefresh={refreshData} />}
+          {state.route === "home" && <HomePage />}
+          {state.route === "profiles" && <ProfilesPage />}
+          {state.route === "profile-detail" && <ProfileDetailPage />}
+          {(state.route === "browse" || state.route === "beamng-repo") && <BrowsePage />}
+          {state.route === "tools" && <ToolsPage />}
         </div>
-      </main>
+      </div>
+      <ToastStack />
+      <SettingsSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
 }
 
-export default App;
+export default function App() {
+  return (
+    <AppProvider>
+      <NavigationProvider>
+        <AppContent />
+      </NavigationProvider>
+    </AppProvider>
+  );
+}
