@@ -1,6 +1,6 @@
 [package]
 name = "manageng"
-version = "0.1.0"
+version = "0.2.0"
 description = "ManageNG - BeamNG.drive Mod Manager"
 authors = ["ManageNG Team"]
 edition = "2021"
