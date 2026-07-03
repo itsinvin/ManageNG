@@ -126,10 +126,13 @@ function App() {
     <div className="app-layout">
       <aside className="sidebar">
         <div className="sidebar-logo">
-          <h1>
-            Manage<span>NG</span>
-          </h1>
-          <p>BeamNG.drive Mod Manager</p>
+          <img src="/icon.png" alt="ManageNG" className="sidebar-app-icon" />
+          <div>
+            <h1>
+              Manage<span>NG</span>
+            </h1>
+            <p>BeamNG.drive Mod Manager</p>
+          </div>
         </div>
         <nav className="sidebar-nav">
           {NAV_ITEMS.map((item) => (

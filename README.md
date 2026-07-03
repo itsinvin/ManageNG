@@ -58,8 +58,54 @@ npm install
 # Run in development mode
 npm run tauri dev
 
-# Build for production
-npm run tauri build
+# Build installers for your platform
+npm run build:installer          # all bundles for current OS
+npm run build:installer:linux    # .deb + AppImage
+npm run build:installer:windows  # NSIS setup.exe
+npm run build:installer:macos    # .dmg
+```
+
+Installers are written to `src-tauri/target/release/bundle/`.
+
+## Installers
+
+| Platform | Format | Output |
+|----------|--------|--------|
+| **Windows** | NSIS | `ManageNG_x.x.x_x64-setup.exe` |
+| **Linux (Debian/Ubuntu)** | `.deb` | `ManageNG_x.x.x_amd64.deb` |
+| **Linux (Universal)** | AppImage | `ManageNG_x.x.x_amd64.AppImage` |
+| **macOS** | DMG | `ManageNG_x.x.x_x64.dmg` |
+
+### Linux install
+
+```bash
+# Debian/Ubuntu
+sudo dpkg -i ManageNG_0.1.0_amd64.deb
+
+# Or run portable AppImage
+chmod +x ManageNG_0.1.0_amd64.AppImage
+./ManageNG_0.1.0_amd64.AppImage
+```
+
+### Windows install
+
+Run `ManageNG_0.1.0_x64-setup.exe` — the NSIS installer uses BeamNG-themed sidebar/header artwork and installs WebView2 automatically if needed.
+
+### Release builds
+
+Tag a version to trigger GitHub Actions release builds for all platforms:
+
+```bash
+git tag v0.1.0 && git push origin v0.1.0
+```
+
+## Icon
+
+The app icon is a BeamNG-inspired design: dark charcoal background with an angular orange **M** and integrated gear motif. Source: `app-icon.png`. Regenerate all platform sizes with:
+
+```bash
+npm run icon
+python3 scripts/generate-installer-assets.py
 ```
 
 ## Project Structure

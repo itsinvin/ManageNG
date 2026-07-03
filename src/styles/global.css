@@ -106,6 +106,17 @@ input, select, textarea {
 .sidebar-logo {
   padding: 20px 16px;
   border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sidebar-app-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 12px rgba(255, 102, 0, 0.25);
 }
 
 .sidebar-logo h1 {

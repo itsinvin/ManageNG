@@ -4,7 +4,6 @@ mod error;
 mod profiles;
 
 use commands::AppState;
-use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -39,13 +38,6 @@ pub fn run() {
             commands::save_profile_from_current,
             commands::get_app_version,
         ])
-        .setup(|app| {
-            #[cfg(debug_assertions)]
-            if let Some(window) = app.get_webview_window("main") {
-                window.open_devtools();
-            }
-            Ok(())
-        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

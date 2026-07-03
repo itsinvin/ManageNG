@@ -7,7 +7,13 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "icon": "tauri icon app-icon.png",
+    "installer-assets": "python3 scripts/generate-installer-assets.py",
+    "build:installer": "npm run installer-assets && npm run tauri build",
+    "build:installer:linux": "npm run installer-assets && npm run tauri build -- --bundles deb appimage",
+    "build:installer:windows": "npm run installer-assets && npm run tauri build -- --bundles nsis",
+    "build:installer:macos": "npm run installer-assets && npm run tauri build -- --bundles dmg"
   },
   "dependencies": {
     "react": "^19.1.0",
