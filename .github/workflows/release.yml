@@ -1,0 +1,84 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            target: dmg
+            artifact_glob: "*.dmg"
+          - platform: windows-latest
+            target: nsis
+            artifact_glob: "*-setup.exe"
+          - platform: ubuntu-22.04
+            target: deb
+            artifact_glob: "*.deb"
+          - platform: ubuntu-22.04
+            target: appimage
+            artifact_glob: "*.AppImage"
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev librsvg2-dev libayatana-appindicator3-dev patchelf
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Generate installer assets
+        run: python3 scripts/generate-installer-assets.py
+
+      - name: Build Tauri bundle (${{ matrix.target }})
+        run: npm run tauri build -- --bundles ${{ matrix.target }}
+        env:
+          CI: true
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ManageNG-${{ matrix.target }}-${{ matrix.platform }}
+          path: src-tauri/target/release/bundle/**/${{ matrix.artifact_glob }}
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
