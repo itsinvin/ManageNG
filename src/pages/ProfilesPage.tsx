@@ -40,7 +40,7 @@ export function ProfilesPage() {
     return list.filter(
       (p) =>
         p.name.toLowerCase().includes(q) ||
-        p.description.toLowerCase().includes(q)
+        (p.description ?? "").toLowerCase().includes(q)
     );
   }, [list, debouncedSearch]);
 

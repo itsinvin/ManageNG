@@ -32,6 +32,64 @@ const NavigationContext = createContext<NavigationContextValue | null>(null);
 
 const MAX_HISTORY = 32;
 
+const KNOWN_ROUTES = new Set<RouteId>([
+  "home",
+  "profiles",
+  "profile-detail",
+  "browse",
+  "browse-detail",
+  "tools",
+  "beamng-repo",
+]);
+
+function normalizeRoute(route: unknown): RouteId {
+  if (typeof route === "string" && KNOWN_ROUTES.has(route as RouteId)) {
+    return route as RouteId;
+  }
+  return "home";
+}
+
+function sanitizeEntry(entry: unknown): HistoryEntry {
+  if (!entry || typeof entry !== "object") {
+    return { route: "home", params: {} };
+  }
+
+  const raw = entry as Partial<HistoryEntry>;
+  const params =
+    raw.params && typeof raw.params === "object" && !Array.isArray(raw.params)
+      ? Object.fromEntries(
+          Object.entries(raw.params).filter(([, value]) => typeof value === "string")
+        )
+      : {};
+
+  return {
+    route: normalizeRoute(raw.route),
+    params,
+    profileTab: typeof raw.profileTab === "string" ? raw.profileTab : undefined,
+    installingFor: typeof raw.installingFor === "string" ? raw.installingFor : undefined,
+  };
+}
+
+function loadNavigationState(): { history: HistoryEntry[]; index: number } {
+  const saved = loadJson<{ history?: unknown; index?: unknown }>("nav", {
+    history: [{ route: "home", params: {} }],
+    index: 0,
+  });
+
+  let history = Array.isArray(saved.history)
+    ? saved.history.map(sanitizeEntry)
+    : [{ route: "home" as RouteId, params: {} }];
+
+  if (history.length === 0) {
+    history = [{ route: "home", params: {} }];
+  }
+
+  const rawIndex = typeof saved.index === "number" && Number.isFinite(saved.index) ? saved.index : 0;
+  const index = Math.min(Math.max(0, rawIndex), history.length - 1);
+
+  return { history, index };
+}
+
 function buildBreadcrumbs(
   state: NavState,
   resolveProfile?: (id: string) => string | undefined,
@@ -74,13 +132,9 @@ function buildBreadcrumbs(
 }
 
 export function NavigationProvider({ children }: { children: ReactNode }) {
-  const saved = loadJson<{ history: HistoryEntry[]; index: number }>("nav", {
-    history: [{ route: "home", params: {} }],
-    index: 0,
-  });
-
-  const [history, setHistory] = useState<HistoryEntry[]>(saved.history);
-  const [index, setIndex] = useState(saved.index);
+  const initial = useMemo(() => loadNavigationState(), []);
+  const [history, setHistory] = useState<HistoryEntry[]>(initial.history);
+  const [index, setIndex] = useState(initial.index);
   const [pageVisible, setPageVisible] = useState(true);
   const fadeTimer = useRef<number | null>(null);
   const profileResolver = useRef<(id: string) => string | undefined>(() => undefined);
@@ -97,7 +151,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
 
   const breadcrumbs = useMemo(
     () => buildBreadcrumbs(state, (id) => profileResolver.current(id)),
-    [state, history, index]
+    [state]
   );
 
   const setProfileNameResolver = useCallback((fn: (id: string) => string | undefined) => {
@@ -105,7 +159,10 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const persist = useCallback((h: HistoryEntry[], i: number) => {
-    saveJson("nav", { state: h[i], history: h.slice(-MAX_HISTORY), index: Math.min(i, MAX_HISTORY - 1) });
+    const trimmed = h.slice(-MAX_HISTORY);
+    const offset = h.length - trimmed.length;
+    const adjustedIndex = Math.min(Math.max(0, i - offset), trimmed.length - 1);
+    saveJson("nav", { history: trimmed, index: adjustedIndex });
   }, []);
 
   const navigate = useCallback(
@@ -191,6 +248,12 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [goBack, goForward]);
+
+  useEffect(() => {
+    return () => {
+      if (fadeTimer.current) window.clearTimeout(fadeTimer.current);
+    };
+  }, []);
 
   const value = useMemo(
     () => ({

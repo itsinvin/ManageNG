@@ -91,7 +91,9 @@ function AppContent() {
           {state.route === "home" && <HomePage />}
           {state.route === "profiles" && <ProfilesPage />}
           {state.route === "profile-detail" && <ProfileDetailPage />}
-          {(state.route === "browse" || state.route === "beamng-repo") && <BrowsePage />}
+          {(state.route === "browse" ||
+            state.route === "beamng-repo" ||
+            state.route === "browse-detail") && <BrowsePage />}
           {state.route === "tools" && <ToolsPage />}
         </div>
       </div>
