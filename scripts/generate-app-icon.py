@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate ManageNG app icon — minimal car + crash physics motif."""
+"""Generate ManageNG app icon — minimal BeamNG-orange car + crash physics."""
 
 from __future__ import annotations
 
@@ -11,139 +11,72 @@ ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "app-icon.png"
 
 SIZE = 1024
-PAD = 96
 
-# Match src/styles/tokens.css
-BG = (18, 20, 26)  # --background
-BODY = (240, 235, 227)  # --primary
-ACCENT = (201, 162, 39)  # --accent
-ACCENT_BRIGHT = (232, 196, 74)
-MUTED = (139, 144, 157)  # --muted-foreground
+# BeamNG-inspired palette (flat, no gradients)
+BG = (20, 20, 24)
+ORANGE = (255, 102, 0)
+ORANGE_LIGHT = (255, 140, 48)
 
 
-def lerp(a: float, b: float, t: float) -> float:
-    return a + (b - a) * t
-
-
-def draw_rounded_rect(
-    draw: ImageDraw.ImageDraw,
-    box: tuple[float, float, float, float],
-    radius: float,
-    fill: tuple[int, int, int],
-) -> None:
-    draw.rounded_rectangle(box, radius=radius, fill=fill)
-
-
-def draw_car_crash(draw: ImageDraw.ImageDraw, ox: float, oy: float, scale: float) -> None:
-    """Side-profile sedan with crumpled front and impact sparks."""
+def draw_car_crash(draw: ImageDraw.ImageDraw, cx: float, cy: float, scale: float) -> None:
+    """Angular side-profile car centered on (cx, cy)."""
     s = scale
 
-    # Wheels — bold circles read at 32px
-    wheel_r = 52 * s
-    wheel_y = oy + 188 * s
-    front_wheel_x = ox + 248 * s
-    rear_wheel_x = ox + 548 * s
-    draw.ellipse(
-        (front_wheel_x - wheel_r, wheel_y - wheel_r, front_wheel_x + wheel_r, wheel_y + wheel_r),
-        fill=BODY,
-    )
-    draw.ellipse(
-        (rear_wheel_x - wheel_r, wheel_y - wheel_r, rear_wheel_x + wheel_r, wheel_y + wheel_r),
-        fill=BODY,
-    )
+    # Wheels — dark cutouts for contrast at small sizes
+    wheel_r = 46 * s
+    wheel_y = cy + 72 * s
+    for wx in (cx - 118 * s, cx + 118 * s):
+        draw.ellipse(
+            (wx - wheel_r, wheel_y - wheel_r, wx + wheel_r, wheel_y + wheel_r),
+            fill=BG,
+        )
 
-    # Body shell — clean silhouette with crumple zone at front-right (impact)
+    # Body — bold angular silhouette, crumpled front (right)
     body = [
-        (ox + 120 * s, oy + 188 * s),  # rear bumper bottom
-        (ox + 120 * s, oy + 118 * s),  # rear window base
-        (ox + 168 * s, oy + 52 * s),  # rear roof
-        (ox + 318 * s, oy + 28 * s),  # roof
-        (ox + 448 * s, oy + 44 * s),  # windshield top
-        (ox + 498 * s, oy + 92 * s),  # hood start
-        # crumple zone — jagged deformation
-        (ox + 548 * s, oy + 108 * s),
-        (ox + 572 * s, oy + 82 * s),
-        (ox + 598 * s, oy + 118 * s),
-        (ox + 618 * s, oy + 96 * s),
-        (ox + 638 * s, oy + 132 * s),
-        (ox + 652 * s, oy + 112 * s),
-        (ox + 668 * s, oy + 188 * s),  # front bottom
-        (ox + 188 * s, oy + 188 * s),  # rocker panel
+        (cx - 248 * s, cy + 72 * s),
+        (cx - 248 * s, cy + 8 * s),
+        (cx - 198 * s, cy - 52 * s),
+        (cx - 38 * s, cy - 72 * s),
+        (cx + 88 * s, cy - 64 * s),
+        (cx + 148 * s, cy - 28 * s),
+        (cx + 178 * s, cy + 8 * s),
+        # crumple zone
+        (cx + 208 * s, cy + 4 * s),
+        (cx + 224 * s, cy - 24 * s),
+        (cx + 242 * s, cy + 10 * s),
+        (cx + 258 * s, cy - 12 * s),
+        (cx + 272 * s, cy + 18 * s),
+        (cx + 286 * s, cy - 4 * s),
+        (cx + 298 * s, cy + 72 * s),
+        (cx - 188 * s, cy + 72 * s),
     ]
-    draw.polygon(body, fill=BODY)
+    draw.polygon(body, fill=ORANGE)
 
-    # Window cutout
+    # Window — dark negative space
     window = [
-        (ox + 188 * s, oy + 118 * s),
-        (ox + 228 * s, oy + 72 * s),
-        (ox + 398 * s, oy + 58 * s),
-        (ox + 468 * s, oy + 72 * s),
-        (ox + 468 * s, oy + 118 * s),
+        (cx - 168 * s, cy + 8 * s),
+        (cx - 128 * s, cy - 38 * s),
+        (cx + 28 * s, cy - 48 * s),
+        (cx + 88 * s, cy - 38 * s),
+        (cx + 88 * s, cy + 8 * s),
     ]
     draw.polygon(window, fill=BG)
 
-    # Underbody shadow line — subtle depth
-    draw.line(
-        [(ox + 188 * s, oy + 176 * s), (ox + 620 * s, oy + 176 * s)],
-        fill=MUTED,
-        width=max(2, int(6 * s)),
-    )
-
-    # Impact sparks — accent, bold strokes
-    spark_origin = (ox + 662 * s, oy + 98 * s)
-    sparks = [
-        ((0, 0), (38 * s, -52 * s)),
-        ((0, 0), (58 * s, -18 * s)),
-        ((0, 0), (44 * s, 28 * s)),
-        ((0, 0), (18 * s, -68 * s)),
-    ]
-    sw = max(3, int(14 * s))
-    for start_off, end_off in sparks:
-        x0 = spark_origin[0] + start_off[0]
-        y0 = spark_origin[1] + start_off[1]
-        x1 = spark_origin[0] + end_off[0]
-        y1 = spark_origin[1] + end_off[1]
-        draw.line([(x0, y0), (x1, y1)], fill=ACCENT_BRIGHT, width=sw)
-
-    # Debris shard — single accent triangle
-    shard = [
-        (ox + 628 * s, oy + 74 * s),
-        (ox + 652 * s, oy + 58 * s),
-        (ox + 644 * s, oy + 88 * s),
-    ]
-    draw.polygon(shard, fill=ACCENT)
-
-    # Motion/deformation hint — short stress lines on hood
-    for i, t in enumerate((0.2, 0.45, 0.7)):
-        x = lerp(ox + 508 * s, ox + 578 * s, t)
-        y0 = oy + 98 * s + i * 8 * s
-        draw.line([(x, y0), (x + 22 * s, y0 + 14 * s)], fill=MUTED, width=max(2, int(5 * s)))
+    # Impact sparks — lighter orange, minimal
+    origin = (cx + 292 * s, cy - 8 * s)
+    sw = max(3, int(12 * s))
+    for dx, dy in ((34 * s, -40 * s), (48 * s, -8 * s), (36 * s, 24 * s)):
+        draw.line(
+            [(origin[0], origin[1]), (origin[0] + dx, origin[1] + dy)],
+            fill=ORANGE_LIGHT,
+            width=sw,
+        )
 
 
 def main() -> None:
     img = Image.new("RGBA", (SIZE, SIZE), (*BG, 255))
     draw = ImageDraw.Draw(img)
-
-    # Soft vignette — keeps icon from feeling flat
-    for y in range(SIZE):
-        t = y / (SIZE - 1)
-        shade = int(lerp(0, 10, t))
-        draw.line([(0, y), (SIZE, y)], fill=(BG[0] + shade, BG[1] + shade, BG[2] + shade))
-
-    draw = ImageDraw.Draw(img)
-
-    # Icon plate with subtle inset
-    plate_margin = PAD - 8
-    draw_rounded_rect(
-        draw,
-        (plate_margin, plate_margin, SIZE - plate_margin, SIZE - plate_margin),
-        radius=180,
-        fill=(15, 17, 23),
-    )
-
-    # Car centered on plate
-    draw_car_crash(draw, ox=PAD + 24, oy=PAD + 130, scale=1.0)
-
+    draw_car_crash(draw, cx=SIZE / 2, cy=SIZE / 2 - 16, scale=1.35)
     img.save(OUT, "PNG")
     print(f"Wrote {OUT} ({SIZE}x{SIZE})")
 
