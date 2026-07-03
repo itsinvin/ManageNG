@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate ManageNG app icon from the original car artwork."""
+"""Generate ManageNG app icon — angular M with engine motif."""
 
 from __future__ import annotations
 
@@ -9,19 +9,14 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "app-icon.png"
-SOURCE = ROOT / "scripts" / "assets" / "car-icon-base.png"
+SOURCE = ROOT / "scripts" / "assets" / "m-engine-icon-base.png"
 
 SIZE = 1024
 BG = (20, 20, 24)
-ORANGE = (255, 102, 0)
-ORANGE_LIGHT = (255, 158, 48)
 
 
-def lum(r: int, g: int, b: int) -> float:
-    return 0.2126 * r + 0.7152 * g + 0.0722 * b
-
-
-def recolor_icon(src: Image.Image) -> Image.Image:
+def flatten_background(src: Image.Image) -> Image.Image:
+    """Normalize to flat dark background while keeping the orange M + engine."""
     src = src.convert("RGBA")
     out = Image.new("RGBA", src.size, (*BG, 255))
     sw, sh = src.size
@@ -29,25 +24,16 @@ def recolor_icon(src: Image.Image) -> Image.Image:
     for y in range(sh):
         for x in range(sw):
             r, g, b, a = src.getpixel((x, y))
-            if a < 16:
+            if a < 20:
                 continue
-
-            l = lum(r, g, b)
-            warmth = r - b
-
-            # Gold impact sparks / debris
-            if r > 170 and g > 130 and b < 110 and l > 120:
-                out.putpixel((x, y), (*ORANGE_LIGHT, 255))
-                continue
-
-            # Car body — cream / white pixels
-            if l > 145 and warmth > -20:
-                out.putpixel((x, y), (*ORANGE, 255))
-                continue
-
-            # Subtle interior lines on the original — drop them for a cleaner look
-            if l > 95 and l <= 145:
-                continue
+            # Keep orange logo pixels; flatten textured dark areas to BG
+            if r > 90 and g > 45 and b < 80 and r > g:
+                out.putpixel((x, y), (r, g, b, 255))
+            elif r > 40 or g > 30:
+                # Engine cutout / dark detail inside the M
+                lum = 0.2126 * r + 0.7152 * g + 0.0722 * b
+                if lum < 55:
+                    out.putpixel((x, y), (12, 12, 16, 255))
 
     return out
 
@@ -59,7 +45,7 @@ def center_on_canvas(icon: Image.Image, size: int = SIZE) -> Image.Image:
 
     cropped = icon.crop(bbox)
     cw, ch = cropped.size
-    scale = min((size * 0.72) / cw, (size * 0.72) / ch)
+    scale = min((size * 0.88) / cw, (size * 0.88) / ch)
     nw, nh = max(1, int(cw * scale)), max(1, int(ch * scale))
     resized = cropped.resize((nw, nh), Image.Resampling.LANCZOS)
 
@@ -75,8 +61,8 @@ def main() -> None:
         raise SystemExit(f"Missing base artwork: {SOURCE}")
 
     src = Image.open(SOURCE)
-    recolored = recolor_icon(src)
-    final = center_on_canvas(recolored)
+    processed = flatten_background(src)
+    final = center_on_canvas(processed)
     final.save(OUT, "PNG")
     print(f"Wrote {OUT} ({SIZE}x{SIZE})")
 
