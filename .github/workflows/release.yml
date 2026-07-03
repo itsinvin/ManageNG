@@ -49,9 +49,6 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
-      - name: Generate installer assets
-        run: python3 scripts/generate-installer-assets.py
-
       - name: Build Tauri bundle (${{ matrix.target }})
         run: npm run tauri build -- --bundles ${{ matrix.target }}
         env:
